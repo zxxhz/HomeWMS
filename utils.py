@@ -1,5 +1,5 @@
 # 导入相关的模块
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Depends, HTTPException, status
@@ -111,20 +111,22 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     # 如果携带了截至时间,就单独设置tokens的过期时间
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
         # 否则的话,就默认用15分钟
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     # 编码,至此 JWT tokens诞生
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: dict = {}):
+async def get_current_user(token: str = Depends(oauth2_scheme), db=None):
     # 获取当前用户信息,实际上是一个解密token的过程
     # :param token: 携带的token
     # :return:
+    if db is None:
+        db = {}
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
