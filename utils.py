@@ -28,7 +28,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
+    username: str
 
 
 class FormData(BaseModel):
@@ -91,12 +91,12 @@ def authenticate_user(fake_db, username: str, password: str):
     """
     # 从数据库获取用户信息
     user = get_user(fake_db, username)
-    # 如果获取为空,返回False
+    # 如果获取为空,返回None
     if not user:
-        return False
-    # 如果密码不正确,也是返回False
+        return None
+    # 如果密码不正确,也是返回None
     if not verify_password(password, user.hashed_password):
-        return False
+        return None
     # 如果存在此用户,且密码也正确,则返回此用户信息
     return user
 
@@ -121,11 +121,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """获取当前用户信息,实际上是一个解密token的过程
-    :param token: 携带的token
-    :return:
-    """
+async def get_current_user(token: str = Depends(oauth2_scheme), db: dict = {}):
+    # 获取当前用户信息,实际上是一个解密token的过程
+    # :param token: 携带的token
+    # :return:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -134,16 +133,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         # 解密tokens
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        # 从tokens的载荷payload中获取用户名
-        username: str = payload.get("sub")
         # 如果没有获取到,抛出异常
-        if username is None:
+        if payload.get("sub") is None:
             raise credentials_exception
+        # 从tokens的载荷payload中获取用户名
+        username: str = payload["sub"]
         token_data = TokenData(username=username)
-    except JWTError:
-        raise credentials_exception
+    except JWTError as exc:
+        raise credentials_exception from exc
     # 从数据库查询用户信息
-    user = get_user(fake_users_db, username=token_data.username)
+    user = get_user(db, username=token_data.username)
     if user is None:
         raise credentials_exception
     return user

@@ -1,5 +1,17 @@
 from fastapi import APIRouter
-from utils import *
+from utils import (
+    authenticate_user,
+    get_current_active_user,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    create_access_token,
+    timedelta,
+    Token,
+    FormData,
+    HTTPException,
+    status,
+    Depends,
+    User
+)
 
 router = APIRouter()
 
@@ -46,8 +58,3 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
     :return:
     """
     return current_user
-
-
-@router.get("/users/me/items/")
-async def read_own_items(current_user: User = Depends(get_current_active_user)):
-    return [{"item_id": "Foo", "owner": current_user.username}]
