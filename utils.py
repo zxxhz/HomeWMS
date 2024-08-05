@@ -19,6 +19,15 @@ SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+fake_users_db = {
+    "johndoe": {
+        "username": "johndoe",
+        "full_name": "John Doe",
+        "email": "johndoe@example.com",
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+        "disabled": False,
+    }
+}
 
 class Token(BaseModel):
     """定义token的数据模型"""
@@ -121,7 +130,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db=None):
+async def get_current_user(token: str = Depends(oauth2_scheme), db=fake_users_db):
     # 获取当前用户信息,实际上是一个解密token的过程
     # :param token: 携带的token
     # :return:
@@ -134,7 +143,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=None):
     )
     try:
         # 解密tokens
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
         # 如果没有获取到,抛出异常
         if payload.get("sub") is None:
             raise credentials_exception
@@ -145,6 +154,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=None):
         raise credentials_exception from exc
     # 从数据库查询用户信息
     user = get_user(db, username=token_data.username)
+    print(db)
+    print(user)
+    print(token_data)
     if user is None:
         raise credentials_exception
     return user
