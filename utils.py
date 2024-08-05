@@ -32,7 +32,7 @@ class TokenData(BaseModel):
 
 
 class FormData(BaseModel):
-    uname: str
+    username: str
     passwd: str
 
 

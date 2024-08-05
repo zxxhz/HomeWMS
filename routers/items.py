@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, Path
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 from pymongo import MongoClient
 
 router = APIRouter()
@@ -22,9 +22,9 @@ collection = db["items"]  # 替换为您的集合名称
 
 
 
-#获取物品信息 应该从数据库中搜索物品名字 返回物品位置和数量 用列表
 @router.get("/items/{_id}", response_model=Item)
 async def read_item(_id: str):
+    #获取物品信息 应该从数据库中搜索物品名字 返回物品位置和数量 用列表
     item = collection.find_one({"_id": _id})
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
