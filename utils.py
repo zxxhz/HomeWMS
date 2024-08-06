@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
+from database import find_one
 
 
 # 定义关于token的相关常量
@@ -19,15 +20,6 @@ SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
 
 class Token(BaseModel):
     """定义token的数据模型"""
@@ -80,26 +72,25 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def get_user(db, username: str):
+def get_user(username: str):
     """查询用户
     :param db: 模拟的数据库
     :param username: 用户名
     :return: 返回一个用户的BaseModel(其实就是字典的BaseModel对象,二者可互相转换)
     """
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+    db = find_one("user", {"username": username})
+    if username in db["username"]:
+        return UserInDB(**db)
 
 
-def authenticate_user(fake_db, username: str, password: str):
+def authenticate_user(username: str, password: str):
     """验证用户
-    :param fake_db: 存储用户的数据库（这里是上面用字典模拟的）
     :param username: 用户名
     :param password: 密码
     :return:
     """
     # 从数据库获取用户信息
-    user = get_user(fake_db, username)
+    user = get_user(username)
     # 如果获取为空,返回None
     if not user:
         return None
@@ -130,12 +121,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db=fake_users_db):
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     # 获取当前用户信息,实际上是一个解密token的过程
     # :param token: 携带的token
-    # :return:
-    if db is None:
-        db = {}
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -153,10 +141,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=fake_users_db
     except JWTError as exc:
         raise credentials_exception from exc
     # 从数据库查询用户信息
-    user = get_user(db, username=token_data.username)
-    print(db)
-    print(user)
-    print(token_data)
+    user = get_user(token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -167,7 +152,4 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     :param current_user:
     :return:
     """
-    # 如果用户被禁,抛出异常
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
     return current_user

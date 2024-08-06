@@ -15,26 +15,14 @@ from utils import (
 
 router = APIRouter()
 
-# 这里定义一个字典,来模拟数据库中的数据
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
-
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: FormData):
     """这里定义了一个接口，路径为 /token, 用于用户申请tokens
     :param form_data:
-    :return:
     """
     # 首先对用户做出检查
-    user = authenticate_user(fake_users_db, form_data.username, form_data.passwd)
+    user = authenticate_user(form_data.username, form_data.passwd)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
